@@ -16,6 +16,7 @@ SPOT_URL = "http://spot-manager:8000"
 # Cost allocation data
 cost_allocations: List[dict] = []
 recommendations: List[dict] = []
+GPU_PRICING = {"T4": 0.35, "A100": 3.67, "V100": 2.48, "P100": 1.46, "L4": 0.81}
 
 
 class CostWindow(BaseModel):
@@ -46,7 +47,6 @@ async def take_cost_snapshot():
             spot = {"total_savings": 0}
 
     # Calculate per-node costs
-    pricing = {"T4": 0.35, "A100": 3.67, "V100": 2.48}
     node_costs = {}
     total_idle_cost = 0
     total_active_cost = 0
@@ -57,7 +57,7 @@ async def take_cost_snapshot():
         for gpu in gpus:
             gpu_type = gpu.get("gpu_type", "T4") if isinstance(gpu, dict) else gpu.gpu_type
             status = gpu.get("status", "idle") if isinstance(gpu, dict) else gpu.status
-            rate = pricing.get(gpu_type, 0.35) / 3600  # per second
+            rate = GPU_PRICING.get(gpu_type, GPU_PRICING["T4"]) / 3600  # per second
             # Even idle GPUs cost money (you're paying for the instance)
             cost_per_interval = rate * AGGREGATION_INTERVAL
             node_cost += cost_per_interval

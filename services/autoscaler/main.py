@@ -127,10 +127,45 @@ async def evaluate_scaling():
     # Scale down decision
     if avg_util < current_policy["scale_down_threshold"] and node_count > current_policy["min_nodes"]:
         target = max(node_count - 1, current_policy["min_nodes"])
+        removed_node = None
+
+        async with httpx.AsyncClient() as client:
+            try:
+                nodes = (await client.get(f"{GPU_NODE_URL}/nodes")).json()
+                candidates = [
+                    node_id
+                    for node_id, gpus in sorted(nodes.items(), reverse=True)
+                    if all(gpu.get("status") != "running" for gpu in gpus)
+                ]
+                if candidates:
+                    removed_node = candidates[0]
+                    result = (await client.post(f"{GPU_NODE_URL}/nodes/{removed_node}/remove")).json()
+                    if "error" in result:
+                        removed_node = None
+            except Exception:
+                removed_node = None
+
+        if removed_node is None:
+            decision = ScaleDecision(
+                action="no_action",
+                reason=(
+                    f"Utilization {avg_util:.1f}% < threshold {current_policy['scale_down_threshold']}%, "
+                    "but no idle node can be removed"
+                ),
+                current_utilization=avg_util,
+                node_count=node_count,
+                target_node_count=node_count,
+            )
+            scaling_history.append({"decision": decision.model_dump(), "timestamp": now})
+            return decision
+
         last_scale_time = now
         decision = ScaleDecision(
             action="scale_down",
-            reason=f"Utilization {avg_util:.1f}% < threshold {current_policy['scale_down_threshold']}%",
+            reason=(
+                f"Utilization {avg_util:.1f}% < threshold {current_policy['scale_down_threshold']}%; "
+                f"removed idle node {removed_node}"
+            ),
             current_utilization=avg_util,
             node_count=node_count,
             target_node_count=target,

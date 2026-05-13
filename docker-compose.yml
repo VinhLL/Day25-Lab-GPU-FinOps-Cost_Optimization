@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   # Mock GPU Node Manager - simulates multi-node GPU cluster
   gpu-node-manager:
@@ -20,6 +18,8 @@ services:
       - T4_PRICE_PER_HOUR=0.35
       - A100_PRICE_PER_HOUR=3.67
       - V100_PRICE_PER_HOUR=2.48
+      - P100_PRICE_PER_HOUR=1.46
+      - L4_PRICE_PER_HOUR=0.81
       - SPOT_DISCOUNT=0.70
 
   # Mock Spot Instance Manager

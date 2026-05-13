@@ -16,6 +16,8 @@ GPU_SPECS = {
     "T4": {"memory_gb": 16, "tflops_fp16": 65, "tdp_watts": 70},
     "A100": {"memory_gb": 80, "tflops_fp16": 312, "tdp_watts": 300},
     "V100": {"memory_gb": 32, "tflops_fp16": 125, "tdp_watts": 300},
+    "P100": {"memory_gb": 16, "tflops_fp16": 19, "tdp_watts": 250},
+    "L4": {"memory_gb": 24, "tflops_fp16": 121, "tdp_watts": 72},
 }
 
 
@@ -66,6 +68,21 @@ def init_cluster():
 
 
 init_cluster()
+
+
+def next_node_id() -> str:
+    """Return a node id that will not collide after scale-down events."""
+    existing_indexes = []
+    for node_id in cluster:
+        try:
+            existing_indexes.append(int(node_id.split("-")[-1]))
+        except ValueError:
+            continue
+
+    next_index = max(existing_indexes, default=-1) + 1
+    while f"node-{next_index:02d}" in cluster:
+        next_index += 1
+    return f"node-{next_index:02d}"
 
 
 @app.get("/nodes")
@@ -200,7 +217,7 @@ def scale_up(gpu_type: str = "T4", count: int = 1):
     """Add new nodes to cluster (simulates autoscaling)."""
     added = []
     for _ in range(count):
-        node_id = f"node-{len(cluster):02d}"
+        node_id = next_node_id()
         specs = GPU_SPECS.get(gpu_type, GPU_SPECS["T4"])
         cluster[node_id] = []
         for g in range(GPUS_PER_NODE):

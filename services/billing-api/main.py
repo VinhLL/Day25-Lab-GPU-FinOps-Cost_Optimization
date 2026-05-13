@@ -12,6 +12,8 @@ PRICING = {
     "T4": float(os.getenv("T4_PRICE_PER_HOUR", "0.35")),
     "A100": float(os.getenv("A100_PRICE_PER_HOUR", "3.67")),
     "V100": float(os.getenv("V100_PRICE_PER_HOUR", "2.48")),
+    "P100": float(os.getenv("P100_PRICE_PER_HOUR", "1.46")),
+    "L4": float(os.getenv("L4_PRICE_PER_HOUR", "0.81")),
 }
 SPOT_DISCOUNT = float(os.getenv("SPOT_DISCOUNT", "0.70"))
 

@@ -14,6 +14,7 @@ SPOT_DISCOUNT = float(os.getenv("SPOT_DISCOUNT", "0.70"))
 # Track spot instances
 spot_instances: Dict[str, dict] = {}
 preemption_history: List[dict] = []
+BASE_PRICES = {"T4": 0.35, "A100": 3.67, "V100": 2.48, "P100": 1.46, "L4": 0.81}
 
 
 class SpotRequest(BaseModel):
@@ -32,10 +33,9 @@ class SpotBid(BaseModel):
 @app.get("/spot/pricing")
 def get_spot_pricing():
     """Get current spot prices (fluctuates)."""
-    base_prices = {"T4": 0.35, "A100": 3.67, "V100": 2.48}
     # Simulate price fluctuation
     spot_prices = {}
-    for gpu, base in base_prices.items():
+    for gpu, base in BASE_PRICES.items():
         fluctuation = random.uniform(0.2, 0.45)  # 55-80% discount
         spot_prices[gpu] = {
             "on_demand_price": base,
@@ -49,8 +49,7 @@ def get_spot_pricing():
 @app.post("/spot/request")
 def request_spot_instance(req: SpotRequest):
     """Request a spot instance."""
-    base_prices = {"T4": 0.35, "A100": 3.67, "V100": 2.48}
-    current_spot = base_prices.get(req.gpu_type, 0.35) * (1 - SPOT_DISCOUNT)
+    current_spot = BASE_PRICES.get(req.gpu_type, BASE_PRICES["T4"]) * (1 - SPOT_DISCOUNT)
 
     if req.max_price_per_hour < current_spot:
         return {
@@ -129,7 +128,6 @@ def terminate_spot(instance_id: str):
 @app.get("/spot/savings-report")
 def savings_report():
     """Calculate total savings from using spot vs on-demand."""
-    base_prices = {"T4": 0.35, "A100": 3.67, "V100": 2.48}
     total_spot_cost = 0
     total_on_demand_equivalent = 0
 
@@ -138,7 +136,7 @@ def savings_report():
             end = inst.get("end_time", time.time())
             runtime_hours = (end - inst["start_time"]) / 3600
             spot_cost = runtime_hours * inst["actual_price"] * inst["gpu_count"]
-            od_cost = runtime_hours * base_prices.get(inst["gpu_type"], 0.35) * inst["gpu_count"]
+            od_cost = runtime_hours * BASE_PRICES.get(inst["gpu_type"], BASE_PRICES["T4"]) * inst["gpu_count"]
             total_spot_cost += spot_cost
             total_on_demand_equivalent += od_cost
 
